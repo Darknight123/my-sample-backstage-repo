@@ -1,0 +1,56 @@
+name: Docker Image Create-Update-Publish-Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'info'
+        type: choice
+        options:
+        - info
+        - warning
+        - debug
+  push:
+    branches: [ "master" ]
+env:
+  REGISTRY: ghcr.io
+jobs:
+  publish:
+    name: publish image
+    runs-on: self-hosted
+
+    steps:
+    - name: set lower case owner name
+      run: |
+        echo "github_owner=`echo  | tr '[:upper:]' '[:lower:]'`" >>${GITHUB_ENV}
+    - name: set image name
+      run: |
+        echo "IMAGE_NAME=`echo /hello-world:latest`" >>${GITHUB_ENV}
+    - uses: actions/checkout@v3
+    - name: Login
+      run: |
+        echo  | docker login ghcr.io -u  --password-stdin
+    - name: Build the Docker image and Publish
+      run: |
+        docker build . --tag /
+        docker push /
+
+  deploy:
+    needs: publish
+    name: deploy image
+    runs-on: self-hosted
+
+    steps:
+    - name: set lower case owner name
+      run: |
+        echo "github_owner=`echo  | tr '[:upper:]' '[:lower:]'`" >>${GITHUB_ENV}
+    - name: set image name
+      run: |
+        echo "IMAGE_NAME=`echo /hello-world:latest`" >>${GITHUB_ENV}
+    - name: connect it and publish
+      run: "cd  && docker pull / && docker run -d -p 80:80 /"
+    - name: cleanup step
+      run: rm -rf ~/.ssh
+  
